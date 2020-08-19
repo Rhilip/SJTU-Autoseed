@@ -6,7 +6,6 @@ import re
 import json
 import hashlib
 import logging
-import random
 import subprocess
 import argparse
 
@@ -32,12 +31,6 @@ qbt_password = ''
 # Putao 帐号信息（Cookies，Passkey）
 putao_passkey = ''
 putao_cookies_raw = ''
-
-# 豆瓣API KEY，用于搜索简介
-douban_apikey = [
-    "0dad551ec0f84ed02907ff5c42e8ec70",
-    "02646d3fb69a52ff072d47bf23cef8fd"
-]
 
 # 标题正则
 PTN = re.compile(
@@ -94,10 +87,6 @@ def cookies_raw2jar(raw: str) -> dict:
 
 
 putao_cookies = cookies_raw2jar(putao_cookies_raw)
-
-
-def get_douban_apikey():
-    return random.choice(douban_apikey)
 
 
 class AutoseedStopException(Exception):
@@ -305,18 +294,18 @@ class Autoseed:
         # 通过豆瓣API获取到豆瓣链接
         logger.info('使用关键词 %s 在豆瓣搜索', douban_search_title)
         try:
-            r = requests.get('https://api.douban.com/v2/movie/search',
-                             params={'q': douban_search_title, 'apikey': get_douban_apikey()},
+            r = requests.get('https://movie.douban.com/j/subject_suggest',
+                             params={'q': douban_search_title},
                              headers={'User-Agent': fake_ua})
             rj = r.json()
             ret: dict = rj['subjects'][0]  # 基本上第一个就是我们需要的233333
         except Exception as e:
             raise AutoseedStopException('豆瓣未返回正常结果，报错如下 %s' % (e,))
 
-        logger.info('获得到豆瓣信息, 片名: %s , 豆瓣链接: %s', ret.get('title'), ret.get('alt'))
+        logger.info('获得到豆瓣信息, 片名: %s , 豆瓣链接: %s', ret.get('title'), ret.get('url'))
 
         # 通过Pt-GEN接口获取详细简介
-        douban_url = ret.get('alt')
+        douban_url = 'https://movie.douban.com/subject/{}/'.format(ret.get('id'))
         logger.info('通过Pt-GEN 获取资源 %s 详细简介', douban_url)
 
         r = requests.get(ptgen_api, params={'url': douban_url}, headers={'User-Agent': fake_ua})
